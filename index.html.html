@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>연두야 놀자 🦜</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; user-select:none; -webkit-tap-highlight-color:transparent; }
+html,body { width:100vw; height:100vh; overflow:hidden; background:#0a1f0a; font-family:'Segoe UI',sans-serif; }
+#arena { position:fixed; inset:0; background:radial-gradient(ellipse at 50% 40%, #1a4020 0%, #061208 100%); }
+.leaf { position:absolute; opacity:.13; animation:drift linear infinite; pointer-events:none; }
+@keyframes drift { 0%{transform:translateY(-50px) rotate(0deg);opacity:0} 10%{opacity:.13} 90%{opacity:.13} 100%{transform:translateY(110vh) rotate(400deg);opacity:0} }
+.target { position:fixed; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:10; overflow:visible; animation:pop-in .22s cubic-bezier(.34,1.7,.64,1) forwards; }
+@keyframes pop-in { 0%{transform:scale(0);opacity:0} 100%{transform:scale(1);opacity:1} }
+.target.dying { animation:burst .3s forwards !important; pointer-events:none; }
+@keyframes burst { 0%{transform:scale(1);opacity:1} 60%{transform:scale(1.8);opacity:.4} 100%{transform:scale(0);opacity:0} }
+.target.expiring { animation:throb .35s ease-in-out infinite alternate !important; }
+@keyframes throb { from{filter:drop-shadow(0 0 0px rgba(255,180,50,0))} to{filter:drop-shadow(0 0 14px rgba(255,180,50,.8))} }
+@keyframes wobble { 0%{transform:scale(1)} 35%{transform:scale(1.2) rotate(-6deg)} 65%{transform:scale(.9) rotate(4deg)} 100%{transform:scale(1)} }
+.hp-dots { position:absolute; bottom:-16px; left:50%; transform:translateX(-50%); display:flex; gap:4px; pointer-events:none; }
+.hp-dot { width:9px; height:9px; border-radius:50%; background:#ef5350; box-shadow:0 0 5px #ef5350; }
+.hp-dot.empty { background:rgba(255,255,255,.2); box-shadow:none; }
+.particle { position:fixed; border-radius:50%; pointer-events:none; z-index:20; animation:pfly .55s forwards; }
+@keyframes pfly { 0%{transform:scale(1);opacity:1} 100%{transform:scale(0) translate(var(--dx),var(--dy));opacity:0} }
+.burst-emoji { position:fixed; pointer-events:none; z-index:25; font-size:3rem; animation:bpop .5s forwards; }
+@keyframes bpop { 0%{transform:scale(0);opacity:1} 50%{transform:scale(1.6);opacity:1} 100%{transform:scale(2.4);opacity:0} }
+.speech { position:fixed; z-index:35; background:rgba(0,0,0,.75); font-size:1.4rem; font-weight:900; padding:7px 16px; border-radius:50px; pointer-events:none; white-space:nowrap; animation:sfloat .9s forwards; }
+@keyframes sfloat { 0%{opacity:1;transform:translateY(0) scale(1)} 20%{transform:translateY(-10px) scale(1.12)} 100%{opacity:0;transform:translateY(-60px) scale(.85)} }
+#score-display { position:fixed; top:14px; right:16px; z-index:40; text-align:right; pointer-events:none; }
+#score-display .num { font-size:2.6rem; font-weight:900; color:#f5e642; text-shadow:0 0 18px rgba(245,230,66,.5); line-height:1; }
+#score-display .lbl { font-size:.62rem; color:#4a8a4a; letter-spacing:2px; text-transform:uppercase; }
+#flash { position:fixed; inset:0; pointer-events:none; z-index:45; opacity:0; }
+.flash-anim { animation:flashanim .22s forwards; }
+@keyframes flashanim { 0%{opacity:.25} 100%{opacity:0} }
+#topblock { position:fixed; top:0; left:0; right:0; height:50px; z-index:998; }
+#bottomblock { position:fixed; bottom:0; left:0; right:0; height:50px; z-index:998; }
+#start { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; z-index:50; background:rgba(6,18,8,.96); }
+#start.hidden { display:none; }
+.start-bird { font-size:6.5rem; animation:bob 1.6s ease-in-out infinite; filter:drop-shadow(0 0 28px rgba(76,175,80,.6)); }
+@keyframes bob { 0%,100%{transform:translateY(0) rotate(-3deg)} 50%{transform:translateY(-13px) rotate(3deg)} }
+.start-title { font-size:2.6rem; font-weight:900; color:#f5e642; letter-spacing:2px; }
+.start-sub { font-size:.95rem; color:#5aad5a; text-align:center; line-height:1.9; }
+.btn-start { width:180px; height:180px; border-radius:50%; background:radial-gradient(circle at 38% 32%, #6abf6a, #2e7d32); border:none; font-size:3.5rem; cursor:pointer; box-shadow:0 0 40px rgba(76,175,80,.5); animation:pbtn 1.5s ease-in-out infinite; }
+.btn-start:active { transform:scale(.88); }
+@keyframes pbtn { 0%,100%{box-shadow:0 0 40px rgba(76,175,80,.5)} 50%{box-shadow:0 0 70px rgba(76,175,80,.8)} }
+</style>
+</head>
+<body>
+<div id="arena"></div>
+<div id="flash"></div>
+<div id="topblock"></div>
+<div id="bottomblock"></div>
+<div id="score-display"><div class="num" id="score-num">0</div><div class="lbl">점수</div></div>
+<div id="start">
+  <div class="start-bird">🦜</div>
+  <div class="start-title">연두야 놀자!</div>
+  <div class="start-sub">동그라미를 쪼아~<br>발로 밟아도 돼! 🐾</div>
+  <button class="btn-start" onclick="startGame()">🌿</button>
+</div>
+<script>
+/* TTS */
+const synth = window.speechSynthesis || null;
+let koVoice = null, ttsUnlocked = false;
+function loadVoices() {
+  if (!synth) return;
+  const all = synth.getVoices();
+  koVoice = all.find(v => v.lang === 'ko-KR') || all.find(v => v.lang.startsWith('ko')) || all[0] || null;
+}
+if (synth) { loadVoices(); if ('onvoiceschanged' in synth) synth.onvoiceschanged = loadVoices; }
+function unlockTTS() {
+  if (!synth || ttsUnlocked) return;
+  ttsUnlocked = true;
+  const u = new SpeechSynthesisUtterance(' ');
+  u.volume = 0; u.lang = 'ko-KR'; synth.speak(u);
+  setTimeout(loadVoices, 300);
+}
+function speak(text) {
+  if (!synth) return;
+  try {
+    synth.cancel();
+    setTimeout(() => {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ko-KR'; u.rate = 0.9; u.pitch = 1.1; u.volume = 1.0;
+      if (koVoice) u.voice = koVoice;
+      synth.speak(u);
+    }, 80);
+  } catch(e) {}
+}
+
+/* AUDIO */
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let actx;
+function getACtx() { if (!actx) actx = new AudioCtx(); if (actx.state === 'suspended') actx.resume(); return actx; }
+function playSoft(freq = 520) {
+  try {
+    const ctx = getACtx(), osc = ctx.createOscillator(), gain = ctx.createGain(), f = ctx.createBiquadFilter();
+    f.type = 'lowpass'; f.frequency.value = 2000;
+    osc.connect(f); f.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.2, ctx.currentTime + 0.04);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.7, ctx.currentTime + 0.22);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.22);
+  } catch(e) {}
+}
+function playChime() { [523, 659, 784].forEach((f, i) => setTimeout(() => playSoft(f), i * 80)); }
+function playBoom() {
+  try {
+    const ctx = getACtx(), osc = ctx.createOscillator(), gain = ctx.createGain(), f = ctx.createBiquadFilter();
+    f.type = 'lowpass'; f.frequency.value = 800;
+    osc.connect(f); f.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(200, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.18);
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.18);
+  } catch(e) {}
+}
+
+/* SVG */
+const SVG = {
+  grain: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#c8860a"/><ellipse cx="40" cy="50" rx="7" ry="13" fill="#f5d547"/><ellipse cx="28" cy="48" rx="6" ry="11" fill="#f5d547" transform="rotate(-18 28 48)"/><ellipse cx="52" cy="48" rx="6" ry="11" fill="#f5d547" transform="rotate(18 52 48)"/><ellipse cx="34" cy="42" rx="5" ry="10" fill="#fce97a" transform="rotate(-8 34 42)"/><ellipse cx="46" cy="42" rx="5" ry="10" fill="#fce97a" transform="rotate(8 46 42)"/><line x1="40" y1="58" x2="40" y2="68" stroke="#a0600a" stroke-width="3" stroke-linecap="round"/></svg>',
+  kitty: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#f9a8d4"/><ellipse cx="40" cy="32" rx="22" ry="20" fill="#d63384"/><ellipse cx="40" cy="38" rx="18" ry="19" fill="#fde8d0"/><path d="M20 30 Q25 18 40 20 Q55 18 60 30 Q55 22 40 24 Q25 22 20 30Z" fill="#d63384"/><ellipse cx="19" cy="42" rx="7" ry="11" fill="#d63384"/><ellipse cx="61" cy="42" rx="7" ry="11" fill="#d63384"/><ellipse cx="33" cy="37" rx="4" ry="4.5" fill="#fff"/><ellipse cx="47" cy="37" rx="4" ry="4.5" fill="#fff"/><circle cx="34" cy="38" r="2.5" fill="#2c1810"/><circle cx="48" cy="38" r="2.5" fill="#2c1810"/><circle cx="35" cy="36.5" r="1" fill="#fff"/><circle cx="49" cy="36.5" r="1" fill="#fff"/><ellipse cx="28" cy="43" rx="5" ry="3" fill="#f472b6" opacity=".5"/><ellipse cx="52" cy="43" rx="5" ry="3" fill="#f472b6" opacity=".5"/><path d="M34 46 Q40 51 46 46" stroke="#c0627a" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
+  prince: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#d4a017"/><ellipse cx="40" cy="52" rx="18" ry="20" fill="#fdd835"/><circle cx="40" cy="30" r="17" fill="#fdd835"/><ellipse cx="57" cy="52" rx="9" ry="14" fill="#f9a825" transform="rotate(15 57 52)"/><ellipse cx="24" cy="52" rx="9" ry="14" fill="#f9a825" transform="rotate(-15 24 52)"/><ellipse cx="40" cy="30" rx="11" ry="9" fill="#fb8c00"/><circle cx="35" cy="27" r="4" fill="#fff"/><circle cx="45" cy="27" r="4" fill="#fff"/><circle cx="35.5" cy="27.5" r="2.2" fill="#1a1a1a"/><circle cx="45.5" cy="27.5" r="2.2" fill="#1a1a1a"/><path d="M37 33 Q40 37 43 33" fill="#e65100"/><rect x="28" y="13" width="24" height="7" rx="2" fill="#ffd700"/><polygon points="28,13 33,6 38,13" fill="#ffd700"/><polygon points="37,13 40,5 43,13" fill="#ffd700"/><polygon points="42,13 47,6 52,13" fill="#ffd700"/><circle cx="33" cy="13" r="2" fill="#e53935"/><circle cx="40" cy="13" r="2" fill="#e53935"/><circle cx="47" cy="13" r="2" fill="#e53935"/></svg>',
+  yeondu: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#2e7d32"/><circle cx="40" cy="40" r="36" fill="none" stroke="#69f0ae" stroke-width="2.5" opacity=".6"/><ellipse cx="40" cy="53" rx="17" ry="19" fill="#4caf50"/><ellipse cx="57" cy="52" rx="8" ry="14" fill="#388e3c" transform="rotate(12 57 52)"/><ellipse cx="23" cy="52" rx="8" ry="14" fill="#388e3c" transform="rotate(-12 23 52)"/><circle cx="40" cy="29" r="16" fill="#4caf50"/><ellipse cx="40" cy="30" rx="10" ry="8.5" fill="#ff8a65"/><circle cx="34" cy="27" r="4.5" fill="#fff"/><circle cx="46" cy="27" r="4.5" fill="#fff"/><circle cx="34.5" cy="27.5" r="2.5" fill="#1a1a1a"/><circle cx="46.5" cy="27.5" r="2.5" fill="#1a1a1a"/><circle cx="35.2" cy="26.7" r=".9" fill="#fff"/><circle cx="47.2" cy="26.7" r=".9" fill="#fff"/><path d="M37 33 Q40 38 43 33" fill="#d84315"/><text x="8" y="20" font-size="11" opacity=".9">&#x2728;</text><text x="56" y="18" font-size="10" opacity=".8">&#x2B50;</text></svg>',
+  narknom: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#b71c1c"/><ellipse cx="40" cy="40" rx="20" ry="19" fill="#4caf50"/><path d="M24 52 Q18 64 22 70" stroke="#388e3c" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M32 56 Q28 68 30 74" stroke="#388e3c" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M40 58 Q40 70 40 76" stroke="#388e3c" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M48 56 Q52 68 50 74" stroke="#388e3c" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M56 52 Q62 64 58 70" stroke="#388e3c" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M28 22 Q24 10 30 8 Q33 14 32 22Z" fill="#2e7d32"/><path d="M52 22 Q56 10 50 8 Q47 14 48 22Z" fill="#2e7d32"/><path d="M20 28 Q15 18 22 14 Q26 22 24 28" fill="#3e2723"/><path d="M60 28 Q65 18 58 14 Q54 22 56 28" fill="#3e2723"/><path d="M30 20 Q32 8 40 10 Q48 8 50 20 Q46 12 40 14 Q34 12 30 20Z" fill="#3e2723"/><ellipse cx="33" cy="36" rx="5" ry="5.5" fill="#fff"/><ellipse cx="47" cy="36" rx="5" ry="5.5" fill="#fff"/><circle cx="33.5" cy="37" r="3" fill="#1a1a1a"/><circle cx="47.5" cy="37" r="3" fill="#1a1a1a"/><circle cx="34.3" cy="35.8" r="1.1" fill="#fff"/><circle cx="48.3" cy="35.8" r="1.1" fill="#fff"/><ellipse cx="26" cy="43" rx="5" ry="3" fill="#e57373" opacity=".55"/><ellipse cx="54" cy="43" rx="5" ry="3" fill="#e57373" opacity=".55"/><path d="M33 46 Q40 52 47 46" stroke="#2e7d32" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M29 30 Q33 27 37 29" stroke="#1a1a1a" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M43 29 Q47 27 51 30" stroke="#1a1a1a" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
+  narknom_hit: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#b71c1c"/><ellipse cx="40" cy="40" rx="20" ry="19" fill="#4caf50"/><path d="M24 52 Q18 64 22 70" stroke="#388e3c" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M32 56 Q28 68 30 74" stroke="#388e3c" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M40 58 Q40 70 40 76" stroke="#388e3c" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M48 56 Q52 68 50 74" stroke="#388e3c" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M56 52 Q62 64 58 70" stroke="#388e3c" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M20 28 Q15 18 22 14 Q26 22 24 28" fill="#3e2723"/><path d="M60 28 Q65 18 58 14 Q54 22 56 28" fill="#3e2723"/><path d="M30 20 Q32 8 40 10 Q48 8 50 20 Q46 12 40 14 Q34 12 30 20Z" fill="#3e2723"/><ellipse cx="33" cy="36" rx="5" ry="5.5" fill="#fff"/><ellipse cx="47" cy="36" rx="5" ry="5.5" fill="#fff"/><circle cx="33.5" cy="37" r="3.2" fill="#1a1a1a"/><circle cx="47.5" cy="37" r="3.2" fill="#1a1a1a"/><ellipse cx="26" cy="43" rx="5" ry="3" fill="#e57373" opacity=".55"/><ellipse cx="54" cy="43" rx="5" ry="3" fill="#e57373" opacity=".55"/><path d="M32 48 Q40 54 48 48" stroke="#2e7d32" stroke-width="2.5" fill="none" stroke-linecap="round"/><text x="8" y="22" font-size="14">&#x1F635;</text></svg>',
+  sopaenyan: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#1b5e20"/><ellipse cx="40" cy="43" rx="21" ry="20" fill="#388e3c"/><ellipse cx="40" cy="27" rx="14" ry="11" fill="#43a047"/><ellipse cx="33" cy="26" rx="5.5" ry="6" fill="#fff"/><ellipse cx="47" cy="26" rx="5.5" ry="6" fill="#fff"/><ellipse cx="33" cy="27" rx="2" ry="4.5" fill="#1a1a1a"/><ellipse cx="47" cy="27" rx="2" ry="4.5" fill="#1a1a1a"/><circle cx="33.3" cy="25.5" r=".8" fill="#fff"/><circle cx="47.3" cy="25.5" r=".8" fill="#fff"/><path d="M28 20 Q33 16 38 20" stroke="#1b5e20" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M42 20 Q47 16 52 20" stroke="#1b5e20" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M37 35 L40 40 L43 35" stroke="#e53935" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="37" cy="35" r="2" fill="#e53935"/><circle cx="43" cy="35" r="2" fill="#e53935"/><ellipse cx="26" cy="33" rx="4" ry="3" fill="#66bb6a" opacity=".5"/><ellipse cx="54" cy="33" rx="4" ry="3" fill="#66bb6a" opacity=".5"/></svg>',
+  sopaenyan_hit: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#1b5e20"/><ellipse cx="40" cy="43" rx="21" ry="20" fill="#388e3c"/><ellipse cx="40" cy="27" rx="14" ry="11" fill="#43a047"/><ellipse cx="33" cy="26" rx="5.5" ry="6" fill="#fff"/><ellipse cx="47" cy="26" rx="5.5" ry="6" fill="#fff"/><ellipse cx="33" cy="27" rx="2" ry="4.5" fill="#1a1a1a"/><ellipse cx="47" cy="27" rx="2" ry="4.5" fill="#1a1a1a"/><path d="M37 35 L40 40 L43 35" stroke="#e53935" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="37" cy="35" r="2" fill="#e53935"/><circle cx="43" cy="35" r="2" fill="#e53935"/><text x="8" y="22" font-size="14">&#x1F635;</text></svg>',
+  sopaenom: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#0d47a1"/><ellipse cx="40" cy="45" rx="23" ry="22" fill="#1565c0"/><ellipse cx="40" cy="27" rx="15" ry="13" fill="#1976d2"/><ellipse cx="33" cy="25" rx="5.5" ry="5.5" fill="#fff"/><ellipse cx="47" cy="25" rx="5.5" ry="5.5" fill="#fff"/><circle cx="33.5" cy="26" r="3.2" fill="#1a1a1a"/><circle cx="47.5" cy="26" r="3.2" fill="#1a1a1a"/><circle cx="34.3" cy="25" r="1.1" fill="#fff"/><circle cx="48.3" cy="25" r="1.1" fill="#fff"/><path d="M27 18 Q33 14 38 20" stroke="#0d47a1" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M42 20 Q47 14 53 18" stroke="#0d47a1" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M32 35 Q40 31 48 35" stroke="#0d47a1" stroke-width="2.5" fill="none" stroke-linecap="round"/><ellipse cx="25" cy="32" rx="5" ry="3.5" fill="#1565c0" opacity=".6"/><ellipse cx="55" cy="32" rx="5" ry="3.5" fill="#1565c0" opacity=".6"/><path d="M38 36 L40 48 L42 36 L40 33 Z" fill="#0d47a1"/></svg>',
+  sopaenom_hit: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#0d47a1"/><ellipse cx="40" cy="45" rx="23" ry="22" fill="#1565c0"/><ellipse cx="40" cy="27" rx="15" ry="13" fill="#1976d2"/><ellipse cx="33" cy="25" rx="5.5" ry="5.5" fill="#fff"/><ellipse cx="47" cy="25" rx="5.5" ry="5.5" fill="#fff"/><circle cx="33.5" cy="26" r="3.2" fill="#1a1a1a"/><circle cx="47.5" cy="26" r="3.2" fill="#1a1a1a"/><path d="M32 35 Q40 31 48 35" stroke="#0d47a1" stroke-width="2.5" fill="none" stroke-linecap="round"/><text x="8" y="22" font-size="14">&#x1F635;</text></svg>',
+  meojori: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#ff7043"/><text x="40" y="54" font-size="46" text-anchor="middle">&#x1F635;</text></svg>',
+  meojori_hit: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#ff7043"/><text x="40" y="54" font-size="46" text-anchor="middle">&#x1F92A;</text></svg>',
+};
+
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+const CHARS = {
+  grain:     { pts:1,  hp:1, glow:'#ffd54f', bg:'#c8860a', burst:'🌾', sound:'알곡',        sfx:()=>playSoft(580) },
+  kitty:     { pts:5,  hp:1, glow:'#f9a8d4', bg:'#d63384', burst:'🩷', sound:'집사',        sfx:()=>playChime() },
+  prince:    { pts:8,  hp:1, glow:'#fdd835', bg:'#d4a017', burst:'💛', sound:'왕자님',      sfx:()=>playSoft(660) },
+  yeondu:    { pts:15, hp:1, glow:'#69f0ae', bg:'#2e7d32', burst:'💚', sound:'연두는 사랑', sfx:()=>playChime() },
+  narknom:   { pts:10, hp:2, glow:'#ef5350', bg:'#b71c1c', burst:'💥', sound:'나르놈',      sfx:()=>playBoom(), hitSvg:'narknom_hit' },
+  sopaenyan: { pts:10, hp:2, glow:'#66bb6a', bg:'#1b5e20', burst:'⚡', sound:'쏘패냔',     sfx:()=>playBoom(), hitSvg:'sopaenyan_hit' },
+  sopaenom:  { pts:10, hp:2, glow:'#90caf9', bg:'#0d47a1', burst:'💥', sound:'쏘패놈',     sfx:()=>playBoom(), hitSvg:'sopaenom_hit' },
+  meojori:   { pts:10, hp:2, glow:'#ffab91', bg:'#ff7043', burst:'😵', sound:'머저리',     sfx:()=>playBoom(), hitSvg:'meojori_hit' },
+};
+
+const SIZES = { grain:78, kitty:86, prince:88, yeondu:92, narknom:88, sopaenyan:86, sopaenom:88, meojori:86 };
+const VILLAIN_KEYS = ['narknom','sopaenyan','sopaenom','meojori'];
+const NORMAL_KEYS  = ['grain','kitty','prince','yeondu'];
+const VILLAIN_W = { narknom:3, sopaenyan:3, sopaenom:3, meojori:3 };
+const NORMAL_W  = { grain:6, kitty:5, prince:1, yeondu:2 };
+
+function pickKey() {
+  if (Math.random() < 0.5) {
+    const tw = Object.values(VILLAIN_W).reduce((a,b)=>a+b,0); let r = Math.random()*tw;
+    for (const k of VILLAIN_KEYS) { r -= VILLAIN_W[k]; if (r<=0) return k; } return 'narknom';
+  } else {
+    const tw = Object.values(NORMAL_W).reduce((a,b)=>a+b,0); let r = Math.random()*tw;
+    for (const k of NORMAL_KEYS) { r -= NORMAL_W[k]; if (r<=0) return k; } return 'grain';
+  }
+}
+
+let score=0, running=false, spawnTimer=null;
+const active = new Map();
+
+/* BG */
+const arena = document.getElementById('arena');
+['🍃','🌿','🌱','🍀'].forEach(e => {
+  for (let i=0; i<3; i++) {
+    const l = document.createElement('div'); l.className='leaf';
+    l.style.cssText = `left:${Math.random()*100}vw;font-size:${1.1+Math.random()*.8}rem;animation-duration:${10+Math.random()*13}s;animation-delay:${-Math.random()*22}s`;
+    l.textContent = e; arena.appendChild(l);
+  }
+});
+
+/* Wake lock */
+let wakeLock = null;
+async function requestWakeLock() {
+  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
+}
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && running) await requestWakeLock();
+});
+
+function goFullscreen() {
+  const el = document.documentElement;
+  try { if (el.requestFullscreen) el.requestFullscreen(); else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen(); } catch(e) {}
+}
+
+/* 모바일 스와이프 차단 — touch만, mouse는 안 건드림 */
+document.addEventListener('touchmove', e => e.preventDefault(), { passive:false });
+document.getElementById('topblock').addEventListener('touchstart', e => e.preventDefault(), { passive:false });
+document.getElementById('bottomblock').addEventListener('touchstart', e => e.preventDefault(), { passive:false });
+
+/* SPAWN */
+function spawn() {
+  if (!running) return;
+  const key = pickKey(), ch = CHARS[key], sz = SIZES[key] || 80;
+  const el = document.createElement('div');
+  el.className = 'target';
+  el.style.cssText = `width:${sz}px;height:${sz}px;background:radial-gradient(circle at 38% 32%,${ch.glow}99,${ch.bg});box-shadow:0 0 24px ${ch.glow}44,0 4px 18px rgba(0,0,0,.4);border:2px solid ${ch.glow}33;`;
+  el.innerHTML = SVG[key];
+
+  let hp = ch.hp;
+  if (hp > 1) {
+    const dots = document.createElement('div'); dots.className = 'hp-dots';
+    for (let i=0; i<hp; i++) { const d = document.createElement('div'); d.className = 'hp-dot'; dots.appendChild(d); }
+    el.appendChild(dots);
+  }
+
+  const topOff = 55;
+  const x = Math.random() * Math.max(10, window.innerWidth - sz);
+  const y = topOff + Math.random() * Math.max(10, window.innerHeight - sz - topOff - 55);
+  el.style.left = x+'px'; el.style.top = y+'px';
+  document.body.appendChild(el);
+
+  const speed = 0.28 + Math.random()*.5, angle = Math.random()*Math.PI*2;
+  const state = { x, y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed, sz, key, ch, hp };
+  active.set(el, state);
+
+  state.lifeTimer = setTimeout(() => el.classList.add('expiring'), 4200);
+  state.removeTimer = setTimeout(() => {
+    if (active.has(el)) { cancelAnimationFrame(state.raf); active.delete(el); el.remove(); }
+  }, 5200);
+
+  function move() {
+    if (!active.has(el)) return;
+    state.x += state.vx; state.y += state.vy;
+    const maxX = window.innerWidth-sz, maxY = window.innerHeight-sz;
+    if (state.x<=0||state.x>=maxX) { state.vx*=-1; state.x=Math.max(0,Math.min(state.x,maxX)); }
+    if (state.y<=topOff||state.y>=maxY) { state.vy*=-1; state.y=Math.max(topOff,Math.min(state.y,maxY)); }
+    el.style.left=state.x+'px'; el.style.top=state.y+'px';
+    state.raf = requestAnimationFrame(move);
+  }
+  state.raf = requestAnimationFrame(move);
+  el.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); peck(el); }, { passive:false });
+}
+
+/* PECK */
+function peck(el) {
+  if (!active.has(el)) return;
+  const s = active.get(el);
+  const rect = el.getBoundingClientRect();
+  const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+
+  if (s.hp > 1) {
+    s.hp--;
+    const dots = el.querySelectorAll('.hp-dot');
+    if (dots[s.hp]) dots[s.hp].classList.add('empty');
+    if (s.ch.hitSvg && SVG[s.ch.hitSvg]) {
+      const oldSvg = el.querySelector('svg');
+      if (oldSvg) { const tmp = document.createElement('div'); tmp.innerHTML = SVG[s.ch.hitSvg]; el.replaceChild(tmp.firstChild, oldSvg); }
+    }
+    el.style.animation = 'none'; void el.offsetWidth; el.style.animation = 'wobble .25s ease-out';
+    s.ch.sfx();
+    speak(s.ch.sound);
+    showSpeech(s.ch.sound, s.ch.glow, cx, cy);
+    score += Math.floor(s.ch.pts/2);
+    document.getElementById('score-num').textContent = score;
+    return;
+  }
+
+  cancelAnimationFrame(s.raf);
+  clearTimeout(s.lifeTimer); clearTimeout(s.removeTimer);
+  active.delete(el); el.remove();
+  score += s.ch.pts;
+  document.getElementById('score-num').textContent = score;
+  s.ch.sfx();
+  speak(s.ch.sound);
+  showSpeech(s.ch.sound, s.ch.glow, cx, cy);
+
+  const flash = document.getElementById('flash');
+  flash.style.background = s.ch.glow;
+  flash.classList.remove('flash-anim'); void flash.offsetWidth; flash.classList.add('flash-anim');
+
+  for (let i=0; i<10; i++) {
+    const p = document.createElement('div'); p.className = 'particle';
+    const ang = Math.random()*Math.PI*2, dist = 45+Math.random()*70, psz = 7+Math.random()*13;
+    p.style.cssText = `width:${psz}px;height:${psz}px;left:${cx-psz/2}px;top:${cy-psz/2}px;background:${s.ch.glow};--dx:${Math.cos(ang)*dist}px;--dy:${Math.sin(ang)*dist}px;`;
+    document.body.appendChild(p); setTimeout(() => p.remove(), 580);
+  }
+  const be = document.createElement('div'); be.className = 'burst-emoji';
+  be.textContent = s.ch.burst;
+  be.style.left = (cx-22)+'px'; be.style.top = (cy-22)+'px';
+  document.body.appendChild(be); setTimeout(() => be.remove(), 520);
+}
+
+function showSpeech(text, color, cx, cy) {
+  const sb = document.createElement('div'); sb.className = 'speech';
+  sb.textContent = text + '!';
+  sb.style.left = Math.max(10, cx-70)+'px'; sb.style.top = (cy-55)+'px';
+  sb.style.color = color;
+  document.body.appendChild(sb); setTimeout(() => sb.remove(), 920);
+}
+
+function maintain() {
+  if (!running) return;
+  if (active.size < 3) spawn();
+  spawnTimer = setTimeout(maintain, active.size < 2 ? 380 : 980);
+}
+
+async function startGame() {
+  goFullscreen();
+  await requestWakeLock();
+  getACtx();
+  unlockTTS();
+  score=0; running=true;
+  document.getElementById('score-num').textContent = '0';
+  document.getElementById('start').classList.add('hidden');
+  active.forEach((s,el) => { cancelAnimationFrame(s.raf); clearTimeout(s.lifeTimer); clearTimeout(s.removeTimer); el.remove(); });
+  active.clear();
+  spawn(); spawn(); spawn();
+  maintain();
+}
+</script>
+</body>
+</html>
