@@ -40,7 +40,8 @@ html,body { width:100vw; height:100vh; overflow:hidden; background:#0a1f0a; font
 @keyframes bob { 0%,100%{transform:translateY(0) rotate(-3deg)} 50%{transform:translateY(-13px) rotate(3deg)} }
 .start-title { font-size:2.6rem; font-weight:900; color:#f5e642; letter-spacing:2px; }
 .start-sub { font-size:.95rem; color:#5aad5a; text-align:center; line-height:1.9; }
-.btn-start { width:180px; height:180px; border-radius:50%; background:radial-gradient(circle at 38% 32%, #6abf6a, #2e7d32); border:none; font-size:3.5rem; cursor:pointer; box-shadow:0 0 40px rgba(76,175,80,.5); animation:pbtn 1.5s ease-in-out infinite; }
+/* 버튼에 강제 포인터 이벤트 허용 및 유저 선택 활성화 세팅 추가 */
+.btn-start { width:180px; height:180px; border-radius:50%; background:radial-gradient(circle at 38% 32%, #6abf6a, #2e7d32); border:none; font-size:3.5rem; cursor:pointer !important; pointer-events: auto !important; user-select: auto !important; box-shadow:0 0 40px rgba(76,175,80,.5); animation:pbtn 1.5s ease-in-out infinite; }
 .btn-start:active { transform:scale(.88); }
 @keyframes pbtn { 0%,100%{box-shadow:0 0 40px rgba(76,175,80,.5)} 50%{box-shadow:0 0 70px rgba(76,175,80,.8)} }
 </style>
@@ -55,7 +56,7 @@ html,body { width:100vw; height:100vh; overflow:hidden; background:#0a1f0a; font
   <div class="start-bird">🦜</div>
   <div class="start-title">연두야 놀자!</div>
   <div class="start-sub">동그라미를 쪼아~<br>발로 밟아도 돼! 🐾</div>
-  <button class="btn-start" style="pointer-events: auto !important; user-select: auto;" onclick="startGame()">🌿</button>
+  <button class="btn-start" onclick="startGame()">🌿</button>
 </div>
 <script>
 /* TTS */
@@ -134,190 +135,4 @@ const SVG = {
   sopaenom: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#0d47a1"/><ellipse cx="40" cy="45" rx="23" ry="22" fill="#1565c0"/><ellipse cx="40" cy="27" rx="15" ry="13" fill="#1976d2"/><ellipse cx="33" cy="25" rx="5.5" ry="5.5" fill="#fff"/><ellipse cx="47" cy="25" rx="5.5" ry="5.5" fill="#fff"/><circle cx="33.5" cy="26" r="3.2" fill="#1a1a1a"/><circle cx="47.5" cy="26" r="3.2" fill="#1a1a1a"/><circle cx="34.3" cy="25" r="1.1" fill="#fff"/><circle cx="48.3" cy="25" r="1.1" fill="#fff"/><path d="M27 18 Q33 14 38 20" stroke="#0d47a1" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M42 20 Q47 14 53 18" stroke="#0d47a1" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M32 35 Q40 31 48 35" stroke="#0d47a1" stroke-width="2.5" fill="none" stroke-linecap="round"/><ellipse cx="25" cy="32" rx="5" ry="3.5" fill="#1565c0" opacity=".6"/><ellipse cx="55" cy="32" rx="5" ry="3.5" fill="#1565c0" opacity=".6"/><path d="M38 36 L40 48 L42 36 L40 33 Z" fill="#0d47a1"/></svg>',
   sopaenom_hit: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#0d47a1"/><ellipse cx="40" cy="45" rx="23" ry="22" fill="#1565c0"/><ellipse cx="40" cy="27" rx="15" ry="13" fill="#1976d2"/><ellipse cx="33" cy="25" rx="5.5" ry="5.5" fill="#fff"/><ellipse cx="47" cy="25" rx="5.5" ry="5.5" fill="#fff"/><circle cx="33.5" cy="26" r="3.2" fill="#1a1a1a"/><circle cx="47.5" cy="26" r="3.2" fill="#1a1a1a"/><path d="M32 35 Q40 31 48 35" stroke="#0d47a1" stroke-width="2.5" fill="none" stroke-linecap="round"/><text x="8" y="22" font-size="14">&#x1F635;</text></svg>',
   meojori: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#ff7043"/><text x="40" y="54" font-size="46" text-anchor="middle">&#x1F635;</text></svg>',
-  meojori_hit: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#ff7043"/><text x="40" y="54" font-size="46" text-anchor="middle">&#x1F92A;</text></svg>',
-};
-
-const pick = arr => arr[Math.floor(Math.random() * arr.length)];
-
-const CHARS = {
-  grain:     { pts:1,  hp:1, glow:'#ffd54f', bg:'#c8860a', burst:'🌾', sound:'알곡',        sfx:()=>playSoft(580) },
-  kitty:     { pts:5,  hp:1, glow:'#f9a8d4', bg:'#d63384', burst:'🩷', sound:'집사',        sfx:()=>playChime() },
-  prince:    { pts:8,  hp:1, glow:'#fdd835', bg:'#d4a017', burst:'💛', sound:'왕자님',      sfx:()=>playSoft(660) },
-  yeondu:    { pts:15, hp:1, glow:'#69f0ae', bg:'#2e7d32', burst:'💚', sound:'연두는 사랑', sfx:()=>playChime() },
-  narknom:   { pts:10, hp:2, glow:'#ef5350', bg:'#b71c1c', burst:'💥', sound:'나르놈',      sfx:()=>playBoom(), hitSvg:'narknom_hit' },
-  sopaenyan: { pts:10, hp:2, glow:'#66bb6a', bg:'#1b5e20', burst:'⚡', sound:'쏘패냔',     sfx:()=>playBoom(), hitSvg:'sopaenyan_hit' },
-  sopaenom:  { pts:10, hp:2, glow:'#90caf9', bg:'#0d47a1', burst:'💥', sound:'쏘패놈',     sfx:()=>playBoom(), hitSvg:'sopaenom_hit' },
-  meojori:   { pts:10, hp:2, glow:'#ffab91', bg:'#ff7043', burst:'😵', sound:'머저리',     sfx:()=>playBoom(), hitSvg:'meojori_hit' },
-};
-
-const SIZES = { grain:78, kitty:86, prince:88, yeondu:92, narknom:88, sopaenyan:86, sopaenom:88, meojori:86 };
-const VILLAIN_KEYS = ['narknom','sopaenyan','sopaenom','meojori'];
-const NORMAL_KEYS  = ['grain','kitty','prince','yeondu'];
-const VILLAIN_W = { narknom:3, sopaenyan:3, sopaenom:3, meojori:3 };
-const NORMAL_W  = { grain:6, kitty:5, prince:1, yeondu:2 };
-
-function pickKey() {
-  if (Math.random() < 0.5) {
-    const tw = Object.values(VILLAIN_W).reduce((a,b)=>a+b,0); let r = Math.random()*tw;
-    for (const k of VILLAIN_KEYS) { r -= VILLAIN_W[k]; if (r<=0) return k; } return 'narknom';
-  } else {
-    const tw = Object.values(NORMAL_W).reduce((a,b)=>a+b,0); let r = Math.random()*tw;
-    for (const k of NORMAL_KEYS) { r -= NORMAL_W[k]; if (r<=0) return k; } return 'grain';
-  }
-}
-
-let score=0, running=false, spawnTimer=null;
-const active = new Map();
-
-/* BG */
-const arena = document.getElementById('arena');
-['🍃','🌿','🌱','🍀'].forEach(e => {
-  for (let i=0; i<3; i++) {
-    const l = document.createElement('div'); l.className='leaf';
-    l.style.cssText = `left:${Math.random()*100}vw;font-size:${1.1+Math.random()*.8}rem;animation-duration:${10+Math.random()*13}s;animation-delay:${-Math.random()*22}s`;
-    l.textContent = e; arena.appendChild(l);
-  }
-});
-
-/* Wake lock */
-let wakeLock = null;
-async function requestWakeLock() {
-  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
-}
-document.addEventListener('visibilitychange', async () => {
-  if (document.visibilityState === 'visible' && running) await requestWakeLock();
-});
-
-function goFullscreen() {
-  const el = document.documentElement;
-  try { if (el.requestFullscreen) el.requestFullscreen(); else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen(); } catch(e) {}
-}
-
-/* 모바일 스와이프 차단 — touch만, mouse는 안 건드림 */
-document.addEventListener('touchmove', e => e.preventDefault(), { passive:false });
-document.getElementById('topblock').addEventListener('touchstart', e => e.preventDefault(), { passive:false });
-document.getElementById('bottomblock').addEventListener('touchstart', e => e.preventDefault(), { passive:false });
-
-/* SPAWN */
-function spawn() {
-  if (!running) return;
-  const key = pickKey(), ch = CHARS[key], sz = SIZES[key] || 80;
-  const el = document.createElement('div');
-  el.className = 'target';
-  el.style.cssText = `width:${sz}px;height:${sz}px;background:radial-gradient(circle at 38% 32%,${ch.glow}99,${ch.bg});box-shadow:0 0 24px ${ch.glow}44,0 4px 18px rgba(0,0,0,.4);border:2px solid ${ch.glow}33;`;
-  el.innerHTML = SVG[key];
-
-  let hp = ch.hp;
-  if (hp > 1) {
-    const dots = document.createElement('div'); dots.className = 'hp-dots';
-    for (let i=0; i<hp; i++) { const d = document.createElement('div'); d.className = 'hp-dot'; dots.appendChild(d); }
-    el.appendChild(dots);
-  }
-
-  const topOff = 55;
-  const x = Math.random() * Math.max(10, window.innerWidth - sz);
-  const y = topOff + Math.random() * Math.max(10, window.innerHeight - sz - topOff - 55);
-  el.style.left = x+'px'; el.style.top = y+'px';
-  document.body.appendChild(el);
-
-  const speed = 0.28 + Math.random()*.5, angle = Math.random()*Math.PI*2;
-  const state = { x, y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed, sz, key, ch, hp };
-  active.set(el, state);
-
-  state.lifeTimer = setTimeout(() => el.classList.add('expiring'), 4200);
-  state.removeTimer = setTimeout(() => {
-    if (active.has(el)) { cancelAnimationFrame(state.raf); active.delete(el); el.remove(); }
-  }, 5200);
-
-  function move() {
-    if (!active.has(el)) return;
-    state.x += state.vx; state.y += state.vy;
-    const maxX = window.innerWidth-sz, maxY = window.innerHeight-sz;
-    if (state.x<=0||state.x>=maxX) { state.vx*=-1; state.x=Math.max(0,Math.min(state.x,maxX)); }
-    if (state.y<=topOff||state.y>=maxY) { state.vy*=-1; state.y=Math.max(topOff,Math.min(state.y,maxY)); }
-    el.style.left=state.x+'px'; el.style.top=state.y+'px';
-    state.raf = requestAnimationFrame(move);
-  }
-  state.raf = requestAnimationFrame(move);
-  el.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); peck(el); }, { passive:false });
-}
-
-/* PECK */
-function peck(el) {
-  if (!active.has(el)) return;
-  const s = active.get(el);
-  const rect = el.getBoundingClientRect();
-  const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
-
-  if (s.hp > 1) {
-    s.hp--;
-    const dots = el.querySelectorAll('.hp-dot');
-    if (dots[s.hp]) dots[s.hp].classList.add('empty');
-    if (s.ch.hitSvg && SVG[s.ch.hitSvg]) {
-      const oldSvg = el.querySelector('svg');
-      if (oldSvg) { const tmp = document.createElement('div'); tmp.innerHTML = SVG[s.ch.hitSvg]; el.replaceChild(tmp.firstChild, oldSvg); }
-    }
-    el.style.animation = 'none'; void el.offsetWidth; el.style.animation = 'wobble .25s ease-out';
-    s.ch.sfx();
-    speak(s.ch.sound);
-    showSpeech(s.ch.sound, s.ch.glow, cx, cy);
-    score += Math.floor(s.ch.pts/2);
-    document.getElementById('score-num').textContent = score;
-    return;
-  }
-
-  cancelAnimationFrame(s.raf);
-  clearTimeout(s.lifeTimer); clearTimeout(s.removeTimer);
-  active.delete(el); el.remove();
-  score += s.ch.pts;
-  document.getElementById('score-num').textContent = score;
-  s.ch.sfx();
-  speak(s.ch.sound);
-  showSpeech(s.ch.sound, s.ch.glow, cx, cy);
-
-  const flash = document.getElementById('flash');
-  flash.style.background = s.ch.glow;
-  flash.classList.remove('flash-anim'); void flash.offsetWidth; flash.classList.add('flash-anim');
-
-  for (let i=0; i<10; i++) {
-    const p = document.createElement('div'); p.className = 'particle';
-    const ang = Math.random()*Math.PI*2, dist = 45+Math.random()*70, psz = 7+Math.random()*13;
-    p.style.cssText = `width:${psz}px;height:${psz}px;left:${cx-psz/2}px;top:${cy-psz/2}px;background:${s.ch.glow};--dx:${Math.cos(ang)*dist}px;--dy:${Math.sin(ang)*dist}px;`;
-    document.body.appendChild(p); setTimeout(() => p.remove(), 580);
-  }
-  const be = document.createElement('div'); be.className = 'burst-emoji';
-  be.textContent = s.ch.burst;
-  be.style.left = (cx-22)+'px'; be.style.top = (cy-22)+'px';
-  document.body.appendChild(be); setTimeout(() => be.remove(), 520);
-}
-
-function showSpeech(text, color, cx, cy) {
-  const sb = document.createElement('div'); sb.className = 'speech';
-  sb.textContent = text + '!';
-  sb.style.left = Math.max(10, cx-70)+'px'; sb.style.top = (cy-55)+'px';
-  sb.style.color = color;
-  document.body.appendChild(sb); setTimeout(() => sb.remove(), 920);
-}
-
-function maintain() {
-  if (!running) return;
-  if (active.size < 3) spawn();
-  spawnTimer = setTimeout(maintain, active.size < 2 ? 380 : 980);
-}
-
-async function startGame() {
-  goFullscreen();
-  await requestWakeLock();
-  getACtx();
-  unlockTTS();
-  score=0; running=true;
-  document.getElementById('score-num').textContent = '0';
-  document.getElementById('start').classList.add('hidden');
-  active.forEach((s,el) => { cancelAnimationFrame(s.raf); clearTimeout(s.lifeTimer); clearTimeout(s.removeTimer); el.remove(); });
-  active.clear();
-  spawn(); spawn(); spawn();
-  maintain();
-}
-</script>
-</body>
-</html>
+  meojori_hit: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#ff7043"/><text x="
